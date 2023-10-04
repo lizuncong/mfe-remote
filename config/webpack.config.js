@@ -758,6 +758,9 @@ module.exports = function (webpackEnv) {
             'react-dom': {
               singleton: true,
             },
+            axios: {
+              // requiredVersion: '^1.1.0',
+            },
           },
         })
     ].filter(Boolean),
