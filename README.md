@@ -489,11 +489,89 @@ new ModuleFederationPlugin({
 
 ![image](./imgs/shared_27.jpg)
 
-
-修改子应用的src/index.js文件：
+修改子应用的 src/index.js 文件：
 
 ![image](./imgs/shared_28.jpg)
 
-打包后运行结果如下，可以看到已经成功设置了publicPath
+打包后运行结果如下，可以看到已经成功设置了 publicPath
 
 ![image](./imgs/shared_29.jpg)
+
+### 动态远程容器
+
+一般来说，子应用的 remote 是使用 URL 配置的，如下所示：
+
+子应用 webpack 配置：
+
+```js
+new ModuleFederationPlugin({
+  remotes: {
+    container: "containerApp@http://localhost:8081/remoteEntry.js",
+  },
+  shared: {
+    react: {
+      singleton: true,
+    },
+    "react-dom": {
+      singleton: true,
+    },
+    axios: {},
+    "js-cookie": {},
+  },
+});
+```
+
+运行结果如下：
+
+![image](./imgs/shared_30.jpg)
+
+可以看到，子应用加载主应用的 remoteEntry.js 逻辑。实际上，如果我们可以动态修改这部分加载逻辑。修改子应用的 webpack 配置，如下所示：
+
+```js
+new ModuleFederationPlugin({
+  remotes: {
+    container: `promise new Promise(resolve => {
+      const timeStamp = Date.now();
+      const remoteUrlWithTimeStamp = 'http://localhost:8081/remoteEntry.js?time=' + timeStamp;
+      const script = document.createElement('script')
+      script.src = remoteUrlWithTimeStamp
+      script.onload = () => {
+        // the injected script has loaded and is available on window
+        // we can now resolve this Promise
+        const proxy = {
+          get: (request) => window.containerApp.get(request),
+          init: (arg) => {
+            try {
+              return window.containerApp.init(arg)
+            } catch(e) {
+              console.log('remote container already initialized')
+            }
+          }
+        }
+        resolve(proxy)
+      }
+      // inject this script with the src set to the versioned remoteEntry.js
+      document.head.appendChild(script);
+    })
+    `,
+  },
+  shared: {
+    react: {
+      singleton: true,
+    },
+    "react-dom": {
+      singleton: true,
+    },
+    axios: {},
+    "js-cookie": {},
+  },
+});
+```
+
+运行结果如下：
+
+![image](./imgs/shared_31.jpg)
+
+动态远程容器在有些场景下比较有用，如果主应用域名需要定制，则可以通过在子应用中动态设置主应用的域名以实现灵活性。
+
+在本例中，我们通过在remoteEntry.js后面追加时间戳，可以有效解决子应用加载remoteEntry.js时的缓存问题。
