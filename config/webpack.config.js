@@ -753,6 +753,7 @@ module.exports = function (webpackEnv) {
           exposes: {
             // 暴露的模块名称
             './Components': './src/components/Button',
+            './public-path': './src/setup-public-path',
           },
           shared: {
             react: {

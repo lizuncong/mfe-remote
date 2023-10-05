@@ -443,7 +443,7 @@ new ModuleFederationPlugin({
 });
 ```
 
-同时，在主应用的src下新增一个`setup-public-path.js`文件
+同时，在主应用的 src 下新增一个`setup-public-path.js`文件
 
 ![image](./imgs/shared_23.jpg)
 
@@ -455,4 +455,45 @@ new ModuleFederationPlugin({
 
 ![image](./imgs/shared_26.jpg)
 
+#### 子应用动态设置 publicPath
 
+修改主应用的 webpack 配置
+
+```js
+entry: {
+  main: paths.appIndexJs,
+  containerApp: paths.publicPathJs, // entry name必须和ModuleFederationPlugin一致
+},
+//...
+new ModuleFederationPlugin({
+  name: 'containerApp',
+  filename: 'remoteEntry.js',
+  exposes: {
+    // 暴露的模块名称
+    './Components': './src/components/Button',
+    './public-path': './src/setup-public-path',
+  },
+  shared: {
+    react: {
+      singleton: true,
+    },
+    'react-dom': {
+      singleton: true,
+    },
+    axios: {},
+  },
+})
+```
+
+在主应用的 src 下新增一个`setup-public-path.js`文件
+
+![image](./imgs/shared_27.jpg)
+
+
+修改子应用的src/index.js文件：
+
+![image](./imgs/shared_28.jpg)
+
+打包后运行结果如下，可以看到已经成功设置了publicPath
+
+![image](./imgs/shared_29.jpg)
