@@ -236,15 +236,15 @@ new ModuleFederationPlugin({
 });
 ```
 
-如果按照主应用配置的shared里面的requiredVersion，按理子应用应该加载的是1.5.1版本号的axios，即主应用的axios chunk才对，但实际情况并非如此。
+如果按照主应用配置的 shared 里面的 requiredVersion，按理子应用应该加载的是 1.5.1 版本号的 axios，即主应用的 axios chunk 才对，但实际情况并非如此。
 
 ![image](./imgs/shared_13.jpg)
 
-可以看到，主应用的shared指定版本不会影响子应用的axios加载逻辑，子应用依然加载的是自身的axios chunk
-
+可以看到，主应用的 shared 指定版本不会影响子应用的 axios 加载逻辑，子应用依然加载的是自身的 axios chunk
 
 #### 场景五：子应用 shared 指定版本
-这次我们在主应用安装axios@1.5.1版本，子应用安装axios@1.0.0版本，同时在子应用shared指定axios版本，配置如下：
+
+这次我们在主应用安装axios@1.5.1版本，子应用安装axios@1.0.0版本，同时在子应用 shared 指定 axios 版本，配置如下：
 
 主应用 webpack 配置：
 
@@ -290,20 +290,20 @@ new ModuleFederationPlugin({
       singleton: true,
     },
     axios: {
-      requiredVersion: '^1.1.0',
+      requiredVersion: "^1.1.0",
     },
     "js-cookie": {},
   },
 });
 ```
 
-由于子应用shared里面指定了axios的requiredVersion，即版本号必须大于1.1.0。由于子应用自身的依赖为1.0.0，显然不满足要求，但是主应用的axios版本为1.5.1，因此，这里子应用将会加载主应用的axios chunk。
+由于子应用 shared 里面指定了 axios 的 requiredVersion，即版本号必须大于 1.1.0。由于子应用自身的依赖为 1.0.0，显然不满足要求，但是主应用的 axios 版本为 1.5.1，因此，这里子应用将会加载主应用的 axios chunk。
 
 ![image](./imgs/shared_14.jpg)
 
 #### 场景六：子应用 shared 指定的版本不存在
-这次我们在主应用安装axios@1.5.1版本，子应用安装axios@1.0.0版本，同时在子应用shared指定axios版本，配置如下：
 
+这次我们在主应用安装axios@1.5.1版本，子应用安装axios@1.0.0版本，同时在子应用 shared 指定 axios 版本，配置如下：
 
 主应用 webpack 配置：
 
@@ -349,13 +349,110 @@ new ModuleFederationPlugin({
       singleton: true,
     },
     axios: {
-      requiredVersion: '^2.0.0',
+      requiredVersion: "^2.0.0",
     },
     "js-cookie": {},
   },
 });
 ```
 
-在子应用中指定axios的版本必须大于2.0.0，但是由于主应用和子应用的版本号都不满足。因此子应用在加载时会走兜底的fallback逻辑，如下图所示，即子应用加载自身的axios chunk文件。
+在子应用中指定 axios 的版本必须大于 2.0.0，但是由于主应用和子应用的版本号都不满足。因此子应用在加载时会走兜底的 fallback 逻辑，如下图所示，即子应用加载自身的 axios chunk 文件。
 
 ![image](./imgs/shared_15.jpg)
+
+### publicPath
+
+主应用的 publicPath 会影响子应用加载远程模块。在前面的例子中，主应用的 publicPath 都设置为'/'，因此子应用加载主应用提供的模块请求 404。
+
+![image](./imgs/shared_16.jpg)
+
+要搞清楚这个问题。我们需要了解一下远程模块的加载逻辑。我们前面讲到，sharedScope 里面每个依赖都有一个 get 方法，模块加载的入口就从这里开始。如下图所示：
+
+![image](./imgs/shared_17.jpg)
+
+remoteEntry.js 中远程模块的加载逻辑如下：
+
+![image](./imgs/shared_18.jpg)
+
+资源的拼接逻辑为：
+
+```js
+var url = __webpack_require__.p + __webpack_require__.u(chunkId);
+```
+
+可以看出最重要的是`__webpack_require__.p`的设置，这个值决定了最终的请求 url 是到哪个域名。接下来就看下主应用的 output.publicPath 的设置会对子应用远程模块的加载有啥影响
+
+> 如果远程脚本请求 404，大概率是主应用的 output.publicPath 设置不正确导致的
+
+#### 主应用不设置 output.publicPath
+
+默认情况下，如果主应用不设置 output.publicPath 时，webpack 在构建阶段会往 remoteEntry.js 中注入设置 publicPath 的逻辑。这段逻辑主要是获取 remoteEntry.js 这个请求的域名，获取的结果就是主应用的域名
+
+![image](./imgs/shared_19.jpg)
+
+可想而知，此时子应用能够正确获取到远程模块
+
+![image](./imgs/shared_20.jpg)
+
+#### 主应用设置 output.publicPath 为主应用域名
+
+当主应用设置 output.publicPath 为具体的值，webpack 在构建阶段会在 remoteEntry.js 中注入设置`__webpack_require__.p`
+
+![image](./imgs/shared_21.jpg)
+
+#### 主应用设置 output.publicPath 为 'auto'
+
+实际上，设置 output.publicPath 为'auto'和不设置 output.publicPath 的效果一样。
+
+![image](./imgs/shared_22.jpg)
+
+#### 从 remoteEntry 脚本中推断 publicPath
+
+前面介绍的 publicPath 设置的例子中，不够灵活。在真实的业务场景中，主应用都会设置特定的 output.publicPath，而这又分为两种场景：
+
+- 1.大部分情况下都是相对路径。如果设置成相对路径，对于主应用来说是比较友好的，因为不需要关注域名。但是对于子应用来说，此时加载远程模块就会导致脚本请求 404
+- 2.小部分情况下设置成绝对路径，这种情况虽然能够解决子应用加载远程模块的问题，但也意味着子应用需要关注主应用的域名，如果主应用域名一旦发生变化，则所有子应用都需要更新，不够灵活。(当然，实际上子应用还是需要关注 remoteEntry 的域名的)
+
+现在就介绍一种可以根据 remoteEntry 脚本的来源，动态设置子应用远程模块的 publicPath
+
+修改主应用的 webpack 配置
+
+```js
+entry: {
+  main: paths.appIndexJs,
+  containerApp: paths.publicPathJs, // entry name必须和ModuleFederationPlugin一致
+},
+//...
+new ModuleFederationPlugin({
+  name: "containerApp", // 必须和entry入口名字一致
+  filename: "remoteEntry.js",
+  exposes: {
+    "./Components": "./src/components/Button",
+  },
+  shared: {
+    react: {
+      singleton: true,
+    },
+    "react-dom": {
+      singleton: true,
+    },
+    axios: {
+      // requiredVersion: '^1.1.0',
+    },
+  },
+});
+```
+
+同时，在主应用的src下新增一个`setup-public-path.js`文件
+
+![image](./imgs/shared_23.jpg)
+
+看下打包后的代码：
+
+![image](./imgs/shared_24.jpg)
+
+![image](./imgs/shared_25.jpg)
+
+![image](./imgs/shared_26.jpg)
+
+

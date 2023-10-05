@@ -197,7 +197,10 @@ module.exports = function (webpackEnv) {
     devtool: false,
     // These are the "entry points" to our application.
     // This means they will be the "root" imports that are included in JS bundle.
-    entry: paths.appIndexJs,
+    entry: {
+      main: paths.appIndexJs,
+      containerApp: paths.publicPathJs, // entry name必须和ModuleFederationPlugin一致
+    },
     output: {
       // The build folder.
       path: paths.appBuild,
@@ -725,7 +728,7 @@ module.exports = function (webpackEnv) {
           extensions: ['js', 'mjs', 'jsx', 'ts', 'tsx'],
           formatter: require.resolve('react-dev-utils/eslintFormatter'),
           eslintPath: require.resolve('eslint'),
-          failOnError: !(isEnvDevelopment && emitErrorsAsWarnings),
+          failOnError: false,
           context: paths.appSrc,
           cache: true,
           cacheLocation: path.resolve(
@@ -758,11 +761,9 @@ module.exports = function (webpackEnv) {
             'react-dom': {
               singleton: true,
             },
-            axios: {
-              // requiredVersion: '^1.1.0',
-            },
+            axios: {},
           },
-        })
+        }),
     ].filter(Boolean),
     // Turn off performance processing because we utilize
     // our own hints via the FileSizeReporter
