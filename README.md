@@ -2,7 +2,7 @@
 
 用于研究 webpack5 模块联邦特性及源码。
 
-本仓库主要是暴露远程模块，供其他子应用消费。
+本仓库主要是暴露远程模块，供其他子应用消费。对应的子应用项目在[https://github.com/lizuncong/mfe-host](https://github.com/lizuncong/mfe-host)
 
 ## 说明
 
